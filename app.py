@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import requests
 import random
 from typing import List, Dict, Any, Optional, Tuple
@@ -13,24 +14,31 @@ st.set_page_config(
 )
 
 # ----------------------------
-# Luxury CSS + Masonry + Animations
+# Session State (FIRST!)
+# ----------------------------
+if "mode" not in st.session_state:
+    st.session_state["mode"] = "Home Lobby"
+if "picked_name" not in st.session_state:
+    st.session_state["picked_name"] = None
+if "favorite_ids" not in st.session_state:
+    st.session_state["favorite_ids"] = set()  # store breed ids only
+
+
+# ----------------------------
+# Luxury CSS + Masonry
 # ----------------------------
 LUX_CSS = """
 <style>
-/* Global background */
 .stApp{
   background: radial-gradient(1200px circle at 10% 0%, #111827 0%, #0b1020 35%, #05060a 100%);
   color:#e5e7eb;
 }
-
-/* Sidebar */
 section[data-testid="stSidebar"]{
   background: linear-gradient(180deg,#0f172a 0%,#0b1020 100%);
   border-right:1px solid rgba(255,255,255,0.06);
 }
 section[data-testid="stSidebar"] * { color:#e5e7eb !important; }
 
-/* Glass card */
 .glass{
   background: rgba(255,255,255,0.045);
   border:1px solid rgba(255,255,255,0.09);
@@ -39,7 +47,6 @@ section[data-testid="stSidebar"] * { color:#e5e7eb !important; }
   padding:18px 18px 14px 18px;
 }
 
-/* Small glass */
 .glass-sm{
   background: rgba(255,255,255,0.035);
   border:1px solid rgba(255,255,255,0.08);
@@ -47,123 +54,73 @@ section[data-testid="stSidebar"] * { color:#e5e7eb !important; }
   padding:12px 12px;
 }
 
-/* Banner */
 .banner{
   border-radius:20px;
   overflow:hidden;
   border:1px solid rgba(255,255,255,0.08);
   box-shadow:0 12px 40px rgba(0,0,0,0.55);
 }
-
-/* Accent */
 .gold{ color:#EAB308; font-weight:800; letter-spacing:0.4px; }
 
-/* Chips */
 .chip{
-  display:inline-block;
-  padding:6px 10px;
-  border-radius:999px;
-  background: rgba(234,179,8,0.12);
-  color:#fde68a;
-  font-size:12px;
-  margin-right:6px;
+  display:inline-block;padding:6px 10px;border-radius:999px;
+  background: rgba(234,179,8,0.12);color:#fde68a;font-size:12px;margin-right:6px;
   border:1px solid rgba(234,179,8,0.25);
 }
 
-/* Buttons */
 .stButton button{
   border-radius:10px !important;
   border:1px solid rgba(234,179,8,0.42) !important;
   background: linear-gradient(180deg, rgba(234,179,8,0.24), rgba(234,179,8,0.05)) !important;
-  color:#fff !important;
-  font-weight:700 !important;
+  color:#fff !important;font-weight:700 !important;
   box-shadow:0 8px 18px rgba(234,179,8,0.15);
 }
 
-/* Inputs */
 div[data-baseweb="select"] > div{
   background: rgba(255,255,255,0.035) !important;
-  border-radius:10px !important;
-  border:1px solid rgba(255,255,255,0.1) !important;
+  border-radius:10px !important;border:1px solid rgba(255,255,255,0.1) !important;
 }
 input, textarea{
   background: rgba(255,255,255,0.035) !important;
-  border-radius:10px !important;
-  border:1px solid rgba(255,255,255,0.1) !important;
+  border-radius:10px !important;border:1px solid rgba(255,255,255,0.1) !important;
   color:#e5e7eb !important;
 }
-
-/* Metric */
 div[data-testid="stMetric"]{
   background: rgba(255,255,255,0.045);
-  padding:12px 12px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,0.09);
+  padding:12px 12px;border-radius:14px;border:1px solid rgba(255,255,255,0.09);
 }
 
-/* Masonry visual wall */
-.masonry{
-  column-count: 4;
-  column-gap: 14px;
-}
-@media (max-width: 1400px){ .masonry{ column-count: 3; } }
-@media (max-width: 1000px){ .masonry{ column-count: 2; } }
-@media (max-width: 640px){ .masonry{ column-count: 1; } }
+/* Masonry */
+.masonry{ column-count:4; column-gap:14px; }
+@media (max-width: 1400px){ .masonry{ column-count:3; } }
+@media (max-width: 1000px){ .masonry{ column-count:2; } }
+@media (max-width: 640px){ .masonry{ column-count:1; } }
 
 .card{
-  break-inside: avoid;
+  break-inside:avoid;
   background: rgba(255,255,255,0.045);
   border:1px solid rgba(255,255,255,0.09);
-  border-radius:16px;
-  overflow:hidden;
-  margin:0 0 14px 0;
+  border-radius:16px; overflow:hidden; margin:0 0 14px 0;
   box-shadow:0 10px 28px rgba(0,0,0,0.55);
   transform: translateY(0);
   transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
   animation: fadeUp .35s ease;
 }
-.card:hover{
-  transform: translateY(-4px);
-  border-color: rgba(234,179,8,0.45);
-  box-shadow:0 16px 40px rgba(0,0,0,0.7);
-}
-
-.card img{
-  width:100%;
-  height:auto;
-  display:block;
-}
-.card-body{
-  padding:10px 12px 12px 12px;
-}
-.card-title{
-  font-weight:800;
-  font-size:16px;
-  color:#f9fafb;
-  margin-bottom:4px;
-}
-.card-meta{
-  font-size:12px;
-  opacity:0.8;
-  margin-bottom:6px;
-}
+.card:hover{ transform: translateY(-4px); border-color: rgba(234,179,8,0.45);
+  box-shadow:0 16px 40px rgba(0,0,0,0.7); }
+.card img{ width:100%; height:auto; display:block; }
+.card-body{ padding:10px 12px 12px 12px; }
+.card-title{ font-weight:800; font-size:16px; color:#f9fafb; margin-bottom:4px; }
+.card-meta{ font-size:12px; opacity:0.8; margin-bottom:6px; }
 .card-tags span{
-  display:inline-block;
-  font-size:11px;
-  padding:4px 7px;
-  border-radius:999px;
-  background:rgba(255,255,255,0.06);
-  border:1px solid rgba(255,255,255,0.08);
-  margin-right:5px;
+  display:inline-block;font-size:11px;padding:4px 7px;border-radius:999px;
+  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);margin-right:5px;
 }
-
-@keyframes fadeUp{
-  from{ opacity:0; transform: translateY(8px); }
-  to{ opacity:1; transform: translateY(0); }
-}
+@keyframes fadeUp{ from{opacity:0;transform: translateY(8px);} to{opacity:1;transform: translateY(0);} }
 </style>
 """
 st.markdown(LUX_CSS, unsafe_allow_html=True)
+
 
 # ----------------------------
 # Safe Requests
@@ -178,7 +135,7 @@ def safe_get_json(url: str, params: Optional[dict] = None, timeout: int = 10):
 
 
 # ----------------------------
-# Banners / Section Images (static)
+# Banners / Images
 # ----------------------------
 BANNERS = {
     "home": "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?q=80&w=1600&auto=format&fit=crop",
@@ -188,14 +145,17 @@ BANNERS = {
     "meds": "https://images.unsplash.com/photo-1583912268180-7f0ec4a3e2e8?q=80&w=1600&auto=format&fit=crop",
     "favorites": "https://images.unsplash.com/photo-1518717758536-85ae29035b6d?q=80&w=1600&auto=format&fit=crop",
 }
+
+# 更对应“部位观察”的图片（眼睛/牙齿来自专业口腔与眼部文章图源）
 BODY_PART_IMAGES = {
-    "Eyes": "https://images.unsplash.com/photo-1583512603826-8b1a9957b9b4?q=80&w=1200&auto=format&fit=crop",
-    "Ears": "https://images.unsplash.com/photo-1518717758536-85ae29035b6d?q=80&w=1200&auto=format&fit=crop",
-    "Mouth / Teeth": "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?q=80&w=1200&auto=format&fit=crop",
-    "Skin / Coat": "https://images.unsplash.com/photo-1507146426996-ef05306b995a?q=80&w=1200&auto=format&fit=crop",
+    "Eyes": "https://images.unsplash.com/photo-1583512603826-8b1a9957b9b4?q=80&w=1200&auto=format&fit=crop",            # eye close-up 
+    "Ears": "https://images.unsplash.com/photo-1619983081563-430f63602796?q=80&w=1200&auto=format&fit=crop",
+    "Mouth / Teeth": "https://images.unsplash.com/photo-1598133894008-61f7fdb8cc3a?q=80&w=1200&auto=format&fit=crop",    # teeth/gums 
+    "Skin / Coat": "https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?q=80&w=1200&auto=format&fit=crop",
     "Paws / Nails": "https://images.unsplash.com/photo-1568572933382-74d440642117?q=80&w=1200&auto=format&fit=crop",
     "Stomach / Digestion": "https://images.unsplash.com/photo-1552053831-71594a27632d?q=80&w=1200&auto=format&fit=crop",
 }
+
 
 # ----------------------------
 # Origin -> Department
@@ -209,7 +169,6 @@ def origin_to_region(origin: str) -> str:
     americas = ["united states","usa","america","canada","mexico","brazil","argentina","chile","peru","colombia","uruguay"]
     africa = ["africa","egypt","morocco","mali","kenya","ethiopia","tunisia","algeria","nigeria","south africa"]
     oceania = ["australia","new zealand","tasmania"]
-
     if any(k in o for k in asia): return "Asia Gallery"
     if any(k in o for k in europe): return "Europe Gallery"
     if any(k in o for k in americas): return "Americas Gallery"
@@ -236,14 +195,16 @@ def fetch_breeds() -> List[Dict[str, Any]]:
 
 @st.cache_data(show_spinner=False)
 def fetch_breed_images(breed_id: int, limit: int = 10) -> List[str]:
-    data = safe_get_json("https://api.thedogapi.com/v1/images/search",
-                         params={"breed_id": breed_id, "limit": limit})
+    data = safe_get_json(
+        "https://api.thedogapi.com/v1/images/search",
+        params={"breed_id": breed_id, "limit": limit}
+    )
     if isinstance(data, list):
         return [d.get("url") for d in data if d.get("url")]
     return []
 
 @st.cache_data(show_spinner=False)
-def fetch_random_images(limit: int = 8) -> List[str]:
+def fetch_random_images(limit: int = 6) -> List[str]:
     data = safe_get_json(f"https://dog.ceo/api/breeds/image/random/{limit}")
     if isinstance(data, dict) and data.get("status") == "success":
         imgs = data.get("message")
@@ -281,21 +242,15 @@ def size_category(weight_metric: str) -> str:
     return "Giant"
 
 
-# ----------------------------
-# Breed Thumbnail (best-effort)
-# ----------------------------
 def breed_thumb_url(b: Dict[str, Any]) -> str:
+    # DogAPI docs show reference_image_id -> cdn2 url :contentReference[oaicite:3]{index=3}
     ref = b.get("reference_image_id")
     if ref:
         return f"https://cdn2.thedogapi.com/images/{ref}.jpg"
-    # fallback random (cached)
     pool = fetch_random_images(1)
     return pool[0] if pool else BANNERS["gallery"]
 
 
-# ----------------------------
-# Curator Narrative (No AI key)
-# ----------------------------
 def curator_narrative(b: Dict[str, Any]) -> str:
     name = normalize_text(b.get("name"))
     origin = normalize_text(b.get("origin"))
@@ -321,15 +276,12 @@ Bred for **{bred_for.lower()}**, classified in the **{group}** group.
 These tasks shaped gait, attention, and social instincts.
 
 ### 🎭 Temperament & Personality
-**{temperament}**  
-Often seen as: bonding deeply, acting with role-specific instincts,
-and showing energy patterns tied to history.
+**{temperament}**
 
 ### 🧬 Physical Form & Visual Impressions
 - **Size:** {size}
 - **Height:** {height} cm
 - **Weight:** {weight} kg  
-The silhouette hints at the breed’s original work.
 
 ### 🩺 Care Notes
 Life span: **{life_span}**.  
@@ -414,56 +366,129 @@ def triage(symptoms: Dict[str, Any]) -> Tuple[str, str, List[str]]:
     curator_note = note + "\n\n**Curator safety note:** This is general education only, not diagnosis or prescription."
     return level, curator_note, systems
 
+
+# ----------------------------
+# Global Medication Library (WSAVA-based)
+# ----------------------------
+# Categories + globally common medication examples :contentReference[oaicite:4]{index=4}
 MED_LIBRARY = [
     {
-        "title": "Parasite Prevention (Flea/Tick)",
-        "examples": ["Afoxolaner", "Fluralaner", "Sarolaner"],
-        "used_for": "Prevents flea/tick infestations and related skin disease.",
-        "watch_for": "Vomiting, lethargy, rare neurologic effects.",
-        "note": "Use vet-recommended products; avoid random mixing."
+        "title": "Core Vaccines (Global)",
+        "examples": ["Rabies", "DHPP/DAP (Distemper–Hepatitis–Parvo–Parainfluenza)", "Leptospirosis (region-based)"],
+        "used_for": "Prevention of deadly infectious diseases.",
+        "watch_for": "Mild fever/soreness; rare allergy.",
+        "note": "Schedule depends on age, lifestyle, local law."
     },
     {
-        "title": "Dewormers",
-        "examples": ["Pyrantel", "Fenbendazole", "Milbemycin oxime"],
-        "used_for": "Treats intestinal parasites.",
+        "title": "Heartworm Prevention",
+        "examples": ["Ivermectin", "Milbemycin oxime", "Moxidectin", "Selamectin"],
+        "used_for": "Monthly prevention of heartworm.",
+        "watch_for": "GI upset in sensitive dogs.",
+        "note": "Some breeds need special caution—vet screening required."
+    },
+    {
+        "title": "Flea & Tick Control (Ectoparasiticides)",
+        "examples": ["Afoxolaner", "Fluralaner", "Sarolaner", "Fipronil"],
+        "used_for": "Prevent fleas/ticks and skin disease.",
+        "watch_for": "Vomiting, lethargy; rare neurologic effects.",
+        "note": "Use vet-recommended products; don’t mix randomly."
+    },
+    {
+        "title": "Dewormers (Endoparasiticides)",
+        "examples": ["Pyrantel", "Fenbendazole", "Praziquantel"],
+        "used_for": "Roundworm, hookworm, tapeworm control.",
         "watch_for": "Occasional mild GI upset.",
-        "note": "Parasite type must be confirmed by a vet."
+        "note": "Worm type should be confirmed by a vet."
     },
     {
         "title": "Antibiotics (Prescription)",
-        "examples": ["Amoxicillin-clavulanate", "Cephalexin", "Doxycycline"],
-        "used_for": "Bacterial infections (skin, ear, urinary, etc.).",
-        "watch_for": "Diarrhea, appetite loss, allergy reactions.",
+        "examples": ["Amoxicillin–clavulanate", "Cephalexin", "Enrofloxacin", "Doxycycline"],
+        "used_for": "Bacterial infections (skin, ear, urinary, respiratory).",
+        "watch_for": "Diarrhea; allergy; appetite loss.",
         "note": "Wrong antibiotic causes resistance—vet only."
     },
     {
-        "title": "Pain / Anti-Inflammatory (NSAIDs)",
-        "examples": ["Carprofen", "Meloxicam", "Firocoxib"],
-        "used_for": "Pain, inflammation, arthritis.",
-        "watch_for": "Vomiting, black stool, appetite loss.",
-        "note": "Human pain meds can be toxic; never self-dose."
+        "title": "Antifungals",
+        "examples": ["Itraconazole", "Ketoconazole", "Terbinafine"],
+        "used_for": "Ringworm, yeast dermatitis, systemic fungal disease.",
+        "watch_for": "Liver stress, GI upset.",
+        "note": "Often needs lab confirmation."
     },
     {
-        "title": "Vaccines",
-        "examples": ["Rabies", "DHPP", "Leptospirosis"],
-        "used_for": "Prevents serious infectious diseases.",
-        "watch_for": "Mild fever/soreness after injection.",
-        "note": "Schedule depends on age and region."
+        "title": "Antivirals / Immune Support",
+        "examples": ["Famciclovir (selected cases)", "Interferon (specialist use)"],
+        "used_for": "Certain viral infections under vet guidance.",
+        "watch_for": "Varies by drug.",
+        "note": "Not routinely used without specialist direction."
+    },
+    {
+        "title": "Pain Relief & Anti-Inflammatory (NSAIDs)",
+        "examples": ["Carprofen", "Meloxicam", "Firocoxib", "Robenacoxib"],
+        "used_for": "Pain, arthritis, inflammation.",
+        "watch_for": "Vomiting, black stool, appetite loss.",
+        "note": "Human NSAIDs can be fatal—never self-dose."
+    },
+    {
+        "title": "Steroids / Anti-Inflammatory Hormones",
+        "examples": ["Prednisone/Prednisolone", "Dexamethasone"],
+        "used_for": "Allergy flares, autoimmune disease, inflammation.",
+        "watch_for": "Thirst, urination, appetite increase.",
+        "note": "Needs tapering plan by vet."
+    },
+    {
+        "title": "Allergy / Itch Control",
+        "examples": ["Oclacitinib (Apoquel)", "Lokivetmab (Cytopoint)", "Antihistamines (vet-guided)"],
+        "used_for": "Atopic dermatitis, itch relief.",
+        "watch_for": "GI upset, immune modulation risks.",
+        "note": "Choose based on cause; vet needed."
+    },
+    {
+        "title": "GI Medicines",
+        "examples": ["Maropitant (Cerenia)", "Metronidazole", "Omeprazole/Famotidine", "Probiotics"],
+        "used_for": "Vomiting, diarrhea, acid reflux, gut support.",
+        "watch_for": "Sedation or diarrhea depending on drug.",
+        "note": "Persistent GI issues require vet exam."
+    },
+    {
+        "title": "Neurology / Anti-Seizure",
+        "examples": ["Phenobarbital", "Levetiracetam", "Potassium bromide"],
+        "used_for": "Seizure control, epilepsy.",
+        "watch_for": "Sleepiness, liver monitoring needed.",
+        "note": "Never stop suddenly."
+    },
+    {
+        "title": "Cardiac / Blood Pressure",
+        "examples": ["Pimobendan", "Enalapril/Benazepril", "Furosemide", "Amlodipine"],
+        "used_for": "Heart failure, hypertension.",
+        "watch_for": "Electrolyte imbalance.",
+        "note": "Requires vet follow-up + echo."
+    },
+    {
+        "title": "Endocrine / Metabolic",
+        "examples": ["Insulin", "Levothyroxine", "Trilostane"],
+        "used_for": "Diabetes, hypothyroid, Cushing’s.",
+        "watch_for": "Dose-sensitive effects.",
+        "note": "Lab monitoring essential."
+    },
+    {
+        "title": "Sedation / Anaesthesia",
+        "examples": ["Acepromazine", "Dexmedetomidine", "Ketamine", "Propofol"],
+        "used_for": "Procedural sedation, surgery.",
+        "watch_for": "Breathing/heart effects.",
+        "note": "Clinic use only."
+    },
+    {
+        "title": "Eye / Ear Medications",
+        "examples": ["Artificial tears", "Antibiotic ear drops", "Anti-inflammatory eye drops"],
+        "used_for": "Conjunctivitis, otitis, dry eye support.",
+        "watch_for": "Irritation, allergy.",
+        "note": "Type depends on cause; vet decides."
     },
 ]
 
 
 # ----------------------------
-# Session State: Favorites
-# ----------------------------
-if "favorites" not in st.session_state:
-    st.session_state["favorites"] = []  # store breed dicts
-if "picked_name" not in st.session_state:
-    st.session_state["picked_name"] = None
-
-
-# ----------------------------
-# Header / Home Title Block
+# Header
 # ----------------------------
 st.markdown(
     f"""
@@ -478,7 +503,7 @@ st.markdown(
           <div class="chip">Medication Library</div>
           <div class="chip">My Exhibition</div>
           <p style="opacity:0.9;margin-top:10px;">
-            A luxury-style dog museum where each breed is curated like fine art.
+            A luxury dog museum where each breed is curated like fine art.
             No OpenAI key required.
           </p>
         </div>
@@ -491,32 +516,42 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+
+# ----------------------------
+# Data Prepare
+# ----------------------------
 breeds = fetch_breeds()
 for b in breeds:
     b["region"] = origin_to_region(b.get("origin", ""))
     b["size"] = size_category(metric_range(b.get("weight")))
 
-# Quick stats
 regions = sorted(list({b.get("region", "Unknown / Global") for b in breeds}))
 groups = sorted(list({normalize_text(b.get("breed_group"), "Other/Unknown") for b in breeds}))
+sizes = sorted(list({b.get("size", "Unknown") for b in breeds}))
+
+favorites = [b for b in breeds if b.get("id") in st.session_state["favorite_ids"]]
+
 
 # ----------------------------
-# Sidebar: Wings
+# Sidebar
 # ----------------------------
 st.sidebar.header("Museum Wings")
 mode = st.sidebar.radio(
     "Select a wing",
-    ["Home Lobby", "Breed Gallery", "Body Parts Explorer", "Symptom Checker", "Medication Library", "My Exhibition"]
+    ["Home Lobby", "Breed Gallery", "Body Parts Explorer", "Symptom Checker", "Medication Library", "My Exhibition"],
+    key="mode"
 )
+st.sidebar.caption(f"⭐ Favorites: {len(st.session_state['favorite_ids'])}")
+
 
 # ============================================================
-# WING 0: HOME LOBBY (Museum entrance)
+# WING 0: HOME LOBBY
 # ============================================================
 if mode == "Home Lobby":
     st.image(BANNERS["home"], use_container_width=True)
     st.markdown(
         '<div class="glass"><h2>🏛️ Museum Lobby</h2>'
-        '<p style="opacity:0.9">Welcome to a global dog museum. Choose a wing, explore departments, and curate your own exhibition.</p></div>',
+        '<p style="opacity:0.9">Choose a wing, explore departments, and curate your own exhibition.</p></div>',
         unsafe_allow_html=True
     )
 
@@ -524,20 +559,18 @@ if mode == "Home Lobby":
     c1.metric("Total Breeds", f"{len(breeds)}")
     c2.metric("Departments", f"{len(regions)}")
     c3.metric("Breed Groups", f"{len(groups)}")
-    c4.metric("Your Favorites", f"{len(st.session_state['favorites'])}")
+    c4.metric("Your Favorites", f"{len(st.session_state['favorite_ids'])}")
 
     st.markdown("### 🗺️ Departments Preview")
     dept_cols = st.columns(3)
     for i, r in enumerate(regions):
         sample = [b for b in breeds if b.get("region") == r]
-        if not sample:
-            continue
+        if not sample: continue
         pick = random.choice(sample)
-        img = breed_thumb_url(pick)
 
         with dept_cols[i % 3]:
             st.markdown('<div class="glass-sm">', unsafe_allow_html=True)
-            st.image(img, use_container_width=True)
+            st.image(breed_thumb_url(pick), use_container_width=True)
             st.markdown(f"**{r}**")
             st.caption(f"Examples: {', '.join([normalize_text(x.get('name')) for x in random.sample(sample, min(3,len(sample)))])}")
             st.markdown("</div>", unsafe_allow_html=True)
@@ -551,20 +584,27 @@ if mode == "Home Lobby":
             st.image(breed_thumb_url(b), use_container_width=True)
             st.markdown(f"**{normalize_text(b.get('name'))}**")
             st.caption(f"{b.get('region','Unknown')} · {normalize_text(b.get('breed_group'),'Other/Unknown')}")
-            if st.button("View in Gallery", key=f"lobby_view_{b.get('id')}"):
-                st.session_state["picked_name"] = normalize_text(b.get("name"))
-                st.session_state["force_mode"] = "Breed Gallery"
-                st.rerun()
+
+            colx, coly = st.columns(2)
+            with colx:
+                if st.button("View in Gallery", key=f"lobby_view_{b.get('id')}"):
+                    st.session_state["picked_name"] = normalize_text(b.get("name"))
+                    st.session_state["mode"] = "Breed Gallery"
+                    st.rerun()
+            with coly:
+                if b.get("id") not in st.session_state["favorite_ids"]:
+                    if st.button("⭐ Collect", key=f"lobby_collect_{b.get('id')}"):
+                        st.session_state["favorite_ids"].add(b.get("id"))
+                        st.success("Collected!")
+                        st.rerun()
+
             st.markdown("</div>", unsafe_allow_html=True)
 
-# If user jumped from lobby
-if st.session_state.get("force_mode"):
-    mode = st.session_state.pop("force_mode")
 
 # ============================================================
 # WING A: BREED GALLERY
 # ============================================================
-if mode == "Breed Gallery":
+elif mode == "Breed Gallery":
     st.image(BANNERS["gallery"], use_container_width=True)
     st.markdown(
         '<div class="glass"><h2>🐶 Breed Gallery Wing</h2>'
@@ -572,13 +612,11 @@ if mode == "Breed Gallery":
         unsafe_allow_html=True
     )
 
-    # Sidebar filters
     st.sidebar.header("Gallery Settings")
     keyword = st.sidebar.text_input("Search breed", "")
-    selected_region = st.sidebar.selectbox("Department (Region Gallery)", ["All"] + regions)
+    selected_region = st.sidebar.selectbox("Department", ["All"] + regions)
     selected_group = st.sidebar.selectbox("Breed Group", ["All"] + groups)
-    sizes = sorted(list({b.get("size", "Unknown") for b in breeds}))
-    selected_size = st.sidebar.selectbox("Size Category", ["All"] + sizes)
+    selected_size = st.sidebar.selectbox("Size", ["All"] + sizes)
 
     filtered = []
     for b in breeds:
@@ -591,12 +629,12 @@ if mode == "Breed Gallery":
         if selected_group != "All" and g != selected_group: continue
         if selected_size != "All" and s != selected_size: continue
         filtered.append(b)
+
     if not filtered:
         st.warning("No breeds found with current filters. Showing all breeds instead.")
         filtered = breeds
 
-    st.sidebar.divider()
-    if st.sidebar.button("🎲 Curator Pick (Random Breed)"):
+    if st.sidebar.button("🎲 Curator Pick"):
         st.session_state["picked_name"] = normalize_text(random.choice(filtered).get("name"))
 
     names_list = [normalize_text(b.get("name")) for b in filtered]
@@ -606,16 +644,14 @@ if mode == "Breed Gallery":
     selected_name = st.selectbox("🎨 Select a breed to open its exhibition", names_list, index=default_index)
     current = next((b for b in filtered if normalize_text(b.get("name")) == selected_name), filtered[0])
 
-    # Add to favorites button
-    fav_ids = {x.get("id") for x in st.session_state["favorites"]}
-    if current.get("id") not in fav_ids:
+    # Add to favorites
+    if current.get("id") not in st.session_state["favorite_ids"]:
         if st.button("⭐ Add to My Exhibition"):
-            st.session_state["favorites"].append(current)
-            st.success("Added to your exhibition!")
+            st.session_state["favorite_ids"].add(current.get("id"))
+            st.success("Added to My Exhibition!")
     else:
-        st.info("Already in your exhibition.")
+        st.info("Already collected in My Exhibition.")
 
-    # Detail exhibition
     images = fetch_breed_images(current.get("id", 0), limit=12)
     if not images:
         images = fetch_random_images(limit=12)
@@ -649,17 +685,17 @@ if mode == "Breed Gallery":
         a2.write(f"**Weight (kg):** {metric_range(current.get('weight'))}")
         a3.write(f"**Size Category:** {current.get('size', 'Unknown')}")
 
-        st.markdown("### 🎭 Temperament & Behavior")
+        st.markdown("### 🎭 Temperament")
         st.write(normalize_text(current.get("temperament"), default="No temperament data."))
 
         st.markdown("### 🧭 Original Role / Bred For")
         st.write(normalize_text(current.get("bred_for"), default="No historical role data."))
 
-        st.markdown("### 🧑‍🎨 Curator’s Interpretation")
+        st.markdown("### 🧑‍🎨 Curator Narrative")
         st.markdown(curator_narrative(current))
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # Visual Masonry Wall (high-end look)
+    # Masonry wall rendered via components.html (fix raw HTML issue)
     st.markdown("### 🧱 Global Breed Card Wall")
     wall_html = ['<div class="masonry">']
     for b in random.sample(filtered, k=min(80, len(filtered))):
@@ -677,7 +713,9 @@ if mode == "Breed Gallery":
         </div>
         """)
     wall_html.append("</div>")
-    st.markdown("\n".join(wall_html), unsafe_allow_html=True)
+
+    components.html("\n".join(wall_html), height=1200, scrolling=True)
+
 
 # ============================================================
 # WING B: BODY PARTS
@@ -697,6 +735,7 @@ elif mode == "Body Parts Explorer":
     with colA:
         st.markdown('<div class="glass">', unsafe_allow_html=True)
         st.image(BODY_PART_IMAGES.get(part, BANNERS["parts"]), use_container_width=True)
+        st.caption(f"Reference Image: {part}")
         st.markdown("</div>", unsafe_allow_html=True)
 
     with colB:
@@ -717,6 +756,7 @@ elif mode == "Body Parts Explorer":
         st.info("Severe pain / rapid worsening / multiple abnormal signs → consult a veterinarian.")
         st.markdown("</div>", unsafe_allow_html=True)
 
+
 # ============================================================
 # WING C: SYMPTOM CHECKER
 # ============================================================
@@ -724,11 +764,10 @@ elif mode == "Symptom Checker":
     st.image(BANNERS["triage"], use_container_width=True)
     st.markdown(
         '<div class="glass"><h2>🩺 Symptom Checker Wing</h2>'
-        '<p style="opacity:0.9">A triage-style curator assistant. Not a diagnosis, no prescriptions.</p></div>',
+        '<p style="opacity:0.9">A triage-style curator assistant. Not diagnosis, no prescriptions.</p></div>',
         unsafe_allow_html=True
     )
-
-    st.warning("General education only. This cannot diagnose disease or prescribe medication.")
+    st.warning("General education only. Not a diagnosis or prescription.")
 
     with st.form("symptom_form"):
         col1, col2 = st.columns(2)
@@ -770,7 +809,6 @@ elif mode == "Symptom Checker":
         )
 
         level, note, systems = triage(sym)
-
         st.markdown('<div class="glass">', unsafe_allow_html=True)
         st.markdown(f"## {level}")
         st.markdown(note)
@@ -782,13 +820,14 @@ elif mode == "Symptom Checker":
 
         st.markdown("### 📌 What to record for the vet")
         st.write(
-            "- Start time and speed of change\n"
+            "- Start time and progression\n"
             "- Frequency per day\n"
             "- Photos/videos\n"
             "- Food/environment changes\n"
             "- Any meds already given"
         )
         st.markdown("</div>", unsafe_allow_html=True)
+
 
 # ============================================================
 # WING D: MEDICATION LIBRARY
@@ -797,11 +836,10 @@ elif mode == "Medication Library":
     st.image(BANNERS["meds"], use_container_width=True)
     st.markdown(
         '<div class="glass"><h2>💊 Medication Library Wing</h2>'
-        '<p style="opacity:0.9">Curator-grade medication knowledge. Education only, no dosing.</p></div>',
+        '<p style="opacity:0.9">Global medication knowledge based on WSAVA essential medicines. Education only.</p></div>',
         unsafe_allow_html=True
     )
-
-    st.warning("Never give human medication or change dog doses yourself. Vet decides medicine + dose.")
+    st.warning("No dosing here. Never self-medicate. Vet decides medication + dose.")
 
     for med in MED_LIBRARY:
         with st.expander(f"📁 {med['title']}"):
@@ -810,44 +848,45 @@ elif mode == "Medication Library":
             st.markdown("**Watch for:** " + med["watch_for"])
             st.markdown("**Curator safety note:** " + med["note"])
 
+
 # ============================================================
-# WING E: MY EXHIBITION (Favorites)
+# WING E: MY EXHIBITION
 # ============================================================
 else:
     st.image(BANNERS["favorites"], use_container_width=True)
     st.markdown(
         '<div class="glass"><h2>⭐ My Exhibition Wing</h2>'
-        '<p style="opacity:0.9">Your private curated gallery. Collect breeds and present your own museum exhibition.</p></div>',
+        '<p style="opacity:0.9">Your private curated gallery. Collect breeds and present your own exhibition.</p></div>',
         unsafe_allow_html=True
     )
 
-    favs = st.session_state["favorites"]
-    if not favs:
-        st.info("Your exhibition is empty. Add breeds from the Gallery wing.")
+    if not favorites:
+        st.info("Your exhibition is empty. Add breeds from Gallery or Lobby.")
     else:
-        # Export buttons
-        export_md = "\n".join([f"- {normalize_text(b.get('name'))} ({b.get('region','Unknown')})" for b in favs])
+        export_md = "\n".join([f"- {normalize_text(b.get('name'))} ({b.get('region','Unknown')})" for b in favorites])
         st.download_button(
             "⬇️ Export Exhibition (Markdown)",
             data=export_md,
             file_name="my_exhibition.md"
         )
 
-        # Remove controls
         st.markdown("### 🗃️ Exhibition Collection")
-        for b in favs[:]:
+        for b in favorites:
             colx, coly = st.columns([6,1])
             with colx:
-                st.write(f"**{normalize_text(b.get('name'))}** · {b.get('region','Unknown')} · {normalize_text(b.get('breed_group'),'Other/Unknown')}")
+                st.write(
+                    f"**{normalize_text(b.get('name'))}** · "
+                    f"{b.get('region','Unknown')} · "
+                    f"{normalize_text(b.get('breed_group'),'Other/Unknown')}"
+                )
             with coly:
                 if st.button("Remove", key=f"rm_{b.get('id')}"):
-                    st.session_state["favorites"] = [x for x in favs if x.get("id") != b.get("id")]
+                    st.session_state["favorite_ids"].discard(b.get("id"))
                     st.rerun()
 
-        # Masonry wall of favorites
         st.markdown("### 🖼️ My Exhibition Wall")
         wall_html = ['<div class="masonry">']
-        for b in favs:
+        for b in favorites:
             wall_html.append(f"""
             <div class="card">
                 <img src="{breed_thumb_url(b)}"/>
@@ -858,7 +897,7 @@ else:
             </div>
             """)
         wall_html.append("</div>")
-        st.markdown("\n".join(wall_html), unsafe_allow_html=True)
+        components.html("\n".join(wall_html), height=900, scrolling=True)
 
 # Footer
 st.divider()
